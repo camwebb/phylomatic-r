@@ -4,23 +4,26 @@ phylomatic <- function(phylo, taxa) {
     ## edges?
     if(length(phylo$edge.length) == 0) {
         phylo$edge.length <- vector("double", length(phylo$edge[,1]))
-        phylo$edge.length[] <- NA
+        ## phylo$edge.length[] <- NA
+        ## not needed, C deals with NA as NaN anyway 
     }
     ## recode NaNs to NAs
-    phylo$edge.length[is.nan(phylo$edge.length)] <- NA
+    ## phylo$edge.length[is.nan(phylo$edge.length)] <- NA
     ## root edge?
     if(length(phylo$root.edge) == 0) {
         phylo$root.edge <- vector("double", 1)
-        phylo$root.edge[] <- NA
+        ## phylo$root.edge[] <- NA
     }
     ## ## number of nodes for FY
     ## fn     <- length(phylo$edge[,1]) + 1
 
     dyn.load("phylomatic.so")
+
+    ## TODO : null bls passed into C as 0.0 - need to inform if no bLs
     
-    .C("phylomatic",
+    out <- .C("phylomatic",
        NAOK = TRUE,
-       ## INPUT
+       ## INPUT (APE tree)
        ## 1. dimension of $edge
        as.integer(length(phylo$edge[,1])),
        ## 2,3. vectors of edge lookup table: to, from
@@ -37,77 +40,45 @@ phylomatic <- function(phylo, taxa) {
        ## 8. inner node labels
        as.character(phylo$node.label),
        ## 9. max label string length
-       as.integer(max(nchar(c(phylo$tip.label,phylo$node.label))))
+       as.integer(max(nchar(c(phylo$tip.label,phylo$node.label)))),
 
-       
-       ## ## OUTPUT
-       ## ## 9. Node identifier
-       ## as.integer(vector("integer", fn)),
-       ## ## 10. Node 'to'  
-       ## as.integer(vector("integer", fn)),
-       ## ## 11. Inner node?
-       ## as.integer(vector("integer", fn)),
-       ## ## 12. Branch length
-       ## as.double(vector("double",fn)),
-       ## ## 13. Label
-       ## as.character(vector("character",fn))
+       ## OUTPUT (APE tree)
+       ## Dimension arrays as size of input megatree
+       ## 10. $Nnode
+       as.integer(vector("integer", 1)),
+       ## 11, 12. Two vectors of $edge lookup table: [,1], [,2]
+       as.integer(vector("integer", length(phylo$edge[,1]))),
+       as.integer(vector("integer", length(phylo$edge[,1]))),
+       ## 13. Branch lengths: $edge.length
+       as.double(vector("double", length(phylo$edge[,1]))),
+       ## 14. Root branch length: $root.edge
+       as.double(vector("double", 1)),
+       ## 15. $tip.label
+       as.character(vector("character", length(phylo$edge[,1]))),
+       ## 16. $node.label
+       as.character(vector("character", length(phylo$edge[,1])))
        )
-}
-
-
-
-ape2fy <- function(t) {
-
-    f <- data.frame(cbind(t$edge[,2], t$edge[,1]))
-    colnames(f) <- c("id","to")
     
-    ## edges
-    if(length(t$edge.length) == 0) {
-        f$bl <- vector("double", length(t$edge[,1]))
-        t$bl[] <- NA
-    } else {
-        f$bl <- t$edge.length
-        ## recode NaNs to NAs
-        f$bl[is.nan(f$bl)] <- NA
+    dyn.unload("phylomatic.so")
+
+    ## trim $tip.label
+    ape <- list(Nnode = out[[10]],
+                edge = cbind(out[[11]], out[[12]]),
+                tip.label = out[[15]][out[[15]] != ""],
+                node.label = out[[16]][out[[16]] != ""])
+    
+    if (length(out[[13]][!is.nan(out[[13]])]) != 0) {
+        out[[13]][is.nan(out[[13]])] <- NA
+        ape <- c(ape, list(edge.length = out[[13]]))
+    }
+    if (!is.nan(out[[14]])) {
+        ape <- c(ape, list(root.edge = out[[14]]))
     }
 
-    ## is it a tip node? is the edge[,1] value <= number of tips?
-    f$inner <- vector("integer", length(t$edge[,1]))
-    f$inner <- 1
-    f$inner[f$id <= length(t$tip.label)] <- 0
-
-    f$at <- vector("character", length(t$edge[,1]))
-
-    ## tips first
-    b <- data.frame(a = 1:length(t$tip.label), b = t$tip.label)
-    f$at <- b$b[match(t$edge[,2], b$a)] # or use merge()
-
-    # the rest are filled with node labels, in order
-    f$at[is.na(f$at)] <- t$node.label[-1]
-
-    ## root node
-    ## root edge?
-    if(length(t$root.edge) == 0) {
-        re <- NA
-    } else {
-        re <- t$root.edge
-    }
-    ## new row for root
-    f <- rbind(f, data.frame(id = length(t$tip.label)+1, to = -1,
-                             bl = re, inner = 1, at = t$node.label[1]))
-    
-    ## # sort?
-    ## f <- f[order(f$id),]
- 
-    return(f)
+    class(ape) <- "phylo"
+    return(ape)
 }
 
-
-
-
-
-## back to APE: t2 <- list(edge = cbind(c(4,5,5,4),c(5,1,2,3)), Nnode=2, node.label=c("root","inner"), tip.label=c("A","B","C"))
-## class(t2) <- "phylo"
 
 
 
