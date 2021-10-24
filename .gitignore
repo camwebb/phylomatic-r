@@ -1,0 +1,5 @@
+*.so
+*.o
+OLD*
+.RData
+.Rhistory
