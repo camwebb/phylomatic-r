@@ -1,8 +1,6 @@
 #include <R.h>
 #include <string.h> // for strcpy
 
-// TODO: correctly handle NaN and NULL in R and C.  stdio.h for NULL?
-
 void phylomatic(int *ape_nedge,  int *ape_to,  int *ape_from,           \
                 double *ape_bl,  double *ape_rbl,                       \
                 int *ape_ntip,  char **ape_tip_lab,                     \
@@ -19,7 +17,12 @@ void phylomatic(int *ape_nedge,  int *ape_to,  int *ape_from,           \
   int j = 0;  // tip label counter
   int k = 1;  // node label counter (skip root)
 
-  int    a2f[*ape_nedge+1];
+  int ot = 0;  // out tip counter
+  int on = 0;  // out node counter
+
+  // BEWARE index of a2f[]: node values are 1 to nedge+1, [0] not used
+  int    a2f[*ape_nedge +1 +1];
+  // All Fy index begin with 0=root and run to ape_nedge 
   int    f2a[*ape_nedge+1];
   int    fy_to[*ape_nedge+1];
   int    fy_isinner[*ape_nedge+1];
@@ -64,9 +67,6 @@ void phylomatic(int *ape_nedge,  int *ape_to,  int *ape_from,           \
   strcpy(out_node_lab[0], fy_lab[0]);
   f2a[0] = *ape_ntip + 1;
   
-  int ot = 0;  // out tip counter
-  int on = 0;  // out node counter
-
   // for each member of fy, excluding the first
   for(i = 1; i < *ape_nedge+1; i++) {
     // tips
@@ -100,3 +100,17 @@ void phylomatic(int *ape_nedge,  int *ape_to,  int *ape_from,           \
 //    / /\                     5 <- 2   B             3 ->  2 B
 //   A  B C                    5 <- 3   C             4 ->  2 C
 //   1  2 3                                      
+
+// debug (see https://www.stat.purdue.edu/~liu105/STAT598G_lab/lab6.pdf)
+//   compile w MAKEFLAGS="CFLAGS=-g\ -O1" R CMD SHLIB foo.c
+//   R -d gdb
+//   b phylomatic
+//   run
+//   ... R commands to get to phylomatic
+//   n n n n...
+//   p i[1]
+//   display i[1]
+//   display i[2]
+//   n n n n...
+//   until crash
+
