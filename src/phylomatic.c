@@ -92,25 +92,3 @@ void phylomatic(int *ape_nedge,  int *ape_to,  int *ape_from,           \
   *out_nnode = on+1;
 }
 
-//                                       labels            
-//   APE TREE                    APE   tip  node        FY
-//                                                    0 -> -1 root
-//       root = 4              4 <- 1   A             1 ->  0 A   
-//     /\ inner = 5            4 <- 5      inner      2 ->  0 inner
-//    / /\                     5 <- 2   B             3 ->  2 B
-//   A  B C                    5 <- 3   C             4 ->  2 C
-//   1  2 3                                      
-
-// debug (see https://www.stat.purdue.edu/~liu105/STAT598G_lab/lab6.pdf)
-//   compile w MAKEFLAGS="CFLAGS=-g\ -O1" R CMD SHLIB foo.c
-//   R -d gdb
-//   b phylomatic
-//   run
-//   ... R commands to get to phylomatic
-//   n n n n...
-//   p i[1]
-//   display i[1]
-//   display i[2]
-//   n n n n...
-//   until crash
-
