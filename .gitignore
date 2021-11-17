@@ -1,5 +1,3 @@
-src/*.so
-src/*.o
-OLD*
-src/.RData
-src/.Rhistory
+*.Rproj
+.Rproj.user
+.Rhistory
